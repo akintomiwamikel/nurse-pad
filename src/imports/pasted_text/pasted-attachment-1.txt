@@ -1,0 +1,471 @@
+Design a modern, premium, AI-powered web application called NURSE PAD.
+NURSE PAD is an intelligent nursing writing platform that helps nursing students, nurses, researchers, and lecturers create high-quality nursing documents with AI assistance. It is NOT just an AI chatbot. It is a professional workspace that combines guided forms, AI writing, editing, document management, collaboration, subscriptions, and cloud storage.
+The design should be clean, elegant, trustworthy, academic, and premium, comparable in quality to Notion, Grammarly, Canva, ChatGPT, Microsoft 365, and Google Docs.
+The entire UI should be fully responsive for desktop, tablet, and mobile.
+________________________________________
+DESIGN STYLE
+Create a premium SaaS experience.
+Use:
+•	Soft rounded corners
+•	Glassmorphism where appropriate
+•	Clean spacing
+•	Large typography
+•	Beautiful cards
+•	Soft shadows
+•	Minimalistic interface
+•	Excellent accessibility
+•	Professional medical color palette
+Primary Color
+Deep Teal (#0F766E)
+Secondary
+Emerald
+Accent
+Blue
+Success
+Green
+Warning
+Amber
+Error
+Red
+Background
+White
+Light Gray
+Dark Mode should also be designed.
+________________________________________
+LOGO
+Create a simple modern logo for
+NURSE PAD
+with a notebook combined with a nursing cross and AI sparkle.
+________________________________________
+LANDING PAGE
+Design a beautiful homepage including:
+Hero Section
+Navigation
+Features
+How It Works
+AI Workflow Illustration
+Pricing
+Testimonials
+FAQs
+Footer
+Include CTA buttons:
+Start Writing
+Try AI
+Watch Demo
+________________________________________
+AUTHENTICATION
+Design:
+Login
+Signup
+Forgot Password
+Reset Password
+Email Verification
+OTP Verification
+Two Factor Authentication
+Google Login
+Microsoft Login
+Apple Login
+Remember Me
+Accept Terms
+Privacy Policy
+________________________________________
+ONBOARDING
+After signup create onboarding screens.
+Ask users:
+Institution
+School
+Department
+Programme
+Academic Level
+Country
+Preferred Citation Style
+Writing Goal
+Experience Level
+Allow users to skip onboarding.
+________________________________________
+USER DASHBOARD
+Design a premium dashboard similar to Notion.
+Left Sidebar
+Top Navigation
+Workspace
+Notifications
+Profile
+Search
+Quick Actions
+Recent Documents
+AI Suggestions
+Recent Activity
+Usage Statistics
+Storage Used
+Subscription Status
+Daily Writing Goal
+Upcoming Deadlines
+Pinned Projects
+Favorite Templates
+________________________________________
+SIDEBAR
+Dashboard
+My Documents
+Projects
+Assignments
+Case Studies
+Care Plans
+Drug Studies
+Clinical Reports
+Literature Reviews
+Templates
+AI Assistant
+Research Library
+Citation Manager
+References
+Export Center
+Shared Documents
+Team Workspace
+Notifications
+Billing
+Settings
+Help Center
+________________________________________
+NEW DOCUMENT FLOW
+User clicks
+New Document
+Show beautiful modal.
+Options
+Project
+Assignment
+Seminar
+Proposal
+Care Plan
+Drug Study
+Case Study
+Reflection Journal
+Clinical Posting Report
+Health Education Material
+Research Paper
+Presentation
+________________________________________
+DOCUMENT SETUP
+Instead of opening a blank editor, display a guided wizard.
+Step 1
+Document Type
+Step 2
+Project Title
+Step 3
+Institution
+Step 4
+Department
+Step 5
+Supervisor
+Step 6
+Objectives
+Step 7
+Research Questions
+Step 8
+Methodology
+Step 9
+Keywords
+Step 10
+Writing Style
+Step 11
+Upload Supporting Documents
+Each section should have
+Write Myself
+Generate with AI
+When AI is selected display a professional warning.
+"Your own information produces the highest-quality and most accurate document. AI-generated suggestions should always be reviewed before submission."
+________________________________________
+AI GENERATION SCREEN
+Beautiful loading animation.
+Show AI thinking stages.
+Understanding your topic
+Building structure
+Writing content
+Checking nursing terminology
+Formatting references
+Humanizing writing
+Final review
+Do NOT look like ChatGPT.
+Look unique.
+________________________________________
+DOCUMENT EDITOR
+Design a Microsoft Word + Notion style editor.
+Toolbar
+Undo
+Redo
+Headings
+Fonts
+Bold
+Italic
+Underline
+Tables
+Images
+Charts
+Footnotes
+References
+Comments
+Track Changes
+Page Break
+Table of Contents
+Find
+Replace
+Version History
+Autosave
+Word Count
+Reading Time
+Zoom
+Focus Mode
+Distraction Free Mode
+________________________________________
+AI SIDEBAR
+Floating AI assistant.
+Buttons
+Rewrite
+Expand
+Summarize
+Academic Tone
+Humanize
+Grammar
+Citation
+Evidence
+Explain
+Translate
+Continue Writing
+Generate Table
+Generate Questionnaire
+Generate References
+Generate Abstract
+Generate Conclusion
+________________________________________
+DOCUMENT REVIEW
+Display
+Grammar Score
+Readability
+Consistency
+Academic Quality
+Formatting Score
+Citation Score
+Completeness
+Suggestions
+Missing Sections
+Repeated Sentences
+Possible Hallucinations
+________________________________________
+RESEARCH LIBRARY
+Beautiful searchable library.
+Categories
+Medical Books
+Nursing Books
+Research Papers
+Guidelines
+Drug Manuals
+Care Plans
+WHO
+CDC
+Nigeria Nursing Council Resources
+Bookmarks
+Downloads
+Recent Reads
+________________________________________
+CITATION MANAGER
+Design
+Search Papers
+Import DOI
+Import PDF
+Manual Citation
+APA
+Harvard
+MLA
+Chicago
+Vancouver
+Generate Bibliography
+________________________________________
+EXPORT CENTER
+Beautiful export page.
+Export as
+Word
+PDF
+RTF
+Markdown
+HTML
+EPUB
+Print
+Email
+Cloud Backup
+________________________________________
+MY DOCUMENTS
+Grid View
+List View
+Search
+Filter
+Tags
+Folders
+Favorites
+Shared
+Recently Opened
+Deleted
+Archived
+________________________________________
+AI HISTORY
+Show every AI generation.
+Prompt
+Date
+Tokens Used
+Credits Used
+Cost
+Restore Version
+________________________________________
+NOTIFICATIONS
+Beautiful notification center.
+Writing completed
+Subscription expiring
+New features
+Comments
+Collaboration
+Payment successful
+________________________________________
+TEAM COLLABORATION
+Invite Users
+Share Link
+Permissions
+Comments
+Suggestions
+Real-time editing
+Activity Timeline
+________________________________________
+SUBSCRIPTION
+Create a premium pricing page.
+Plans
+Free
+Student Pro
+Premium
+Institution
+Enterprise
+Each card should compare features beautifully.
+Include monthly and yearly pricing toggle.
+Highlight Premium.
+________________________________________
+PAYMENT
+Design payment flow.
+Supported payments
+Card
+Bank Transfer
+Apple Pay
+Google Pay
+Paystack
+Flutterwave
+Stripe
+Success Page
+Failed Payment
+Pending
+Invoice
+Billing History
+Coupons
+Discounts
+Auto Renewal
+Cancel Subscription
+Upgrade Plan
+Downgrade Plan
+________________________________________
+USER PROFILE
+Photo
+Bio
+Institution
+Programme
+Level
+Achievements
+Writing Statistics
+Badges
+Settings
+Password
+Notifications
+Appearance
+Language
+Timezone
+________________________________________
+SETTINGS
+General
+Profile
+Security
+Billing
+Integrations
+Notifications
+Theme
+Language
+Accessibility
+API Keys
+Connected Apps
+Delete Account
+________________________________________
+ADMIN PANEL
+Admin Dashboard
+Users
+Subscriptions
+Payments
+Analytics
+Reports
+Content
+Templates
+Support Tickets
+Feature Flags
+Announcements
+Coupons
+System Logs
+AI Usage
+Revenue Charts
+Institution Management
+________________________________________
+MOBILE DESIGN
+Create complete mobile experience.
+Bottom Navigation
+Floating AI Button
+Responsive Editor
+Responsive Dashboard
+Responsive Pricing
+Responsive Settings
+________________________________________
+MICRO INTERACTIONS
+Design beautiful animations.
+Hover effects
+Loading Skeletons
+Smooth transitions
+Success animations
+Empty states
+Illustrations
+Error states
+Progress indicators
+________________________________________
+ICONS
+Use modern outline icons similar to Lucide.
+________________________________________
+TYPOGRAPHY
+Modern sans-serif.
+Large headings.
+Comfortable reading.
+________________________________________
+UX
+Everything should feel effortless.
+No clutter.
+Professional.
+Premium.
+Fast.
+Designed for students who spend hours writing.
+________________________________________
+DELIVERABLES
+Design every screen needed for a production-ready SaaS application, including:
+•	User authentication and onboarding
+•	Complete dashboard
+•	AI document creation workflow
+•	Rich document editor
+•	Document management
+•	Collaboration
+•	Research and citation tools
+•	Subscription and billing
+•	Payment flow
+•	User profile and settings
+•	Admin dashboard
+•	Responsive mobile layouts
+•	Design system (colors, typography, spacing, buttons, inputs, cards, modals, tables, alerts, badges, icons, forms, navigation, and reusable components)
+•	Light and dark themes
+•	Interactive prototypes showing key user journeys from signup to document export.
+The final design should be polished enough that developers can implement it directly with minimal UI redesign, and should reflect a world-class AI productivity platform tailored specifically for nursing professionals and students.
+
