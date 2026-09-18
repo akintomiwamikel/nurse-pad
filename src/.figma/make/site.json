@@ -1,0 +1,14 @@
+{
+  "title": "NURSE PAD — AI Academic Writing Workspace for Nurses",
+  "description": "NURSE PAD helps nursing students, interns, and professionals research, structure, write, and review academic and professional nursing work.",
+  "icons": {
+    "icon": "/favicon.svg"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

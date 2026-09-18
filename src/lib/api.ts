@@ -453,6 +453,94 @@ export async function getWritingStats(): Promise<WritingStats> {
   return { totalWords, averageReviewScore, completedCount, totalAssignments }
 }
 
+// ---------- Notifications ----------
+
+export interface NotificationRow {
+  id: string
+  type: 'success' | 'warning' | 'info'
+  title: string
+  body: string | null
+  link: string | null
+  read: boolean
+  created_at: string
+}
+
+export async function listNotifications(): Promise<NotificationRow[]> {
+  const { data, error } = await supabase.from('notifications').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return data as NotificationRow[]
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id)
+  if (error) throw error
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) return
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', userData.user.id).eq('read', false)
+  if (error) throw error
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  const { error } = await supabase.from('notifications').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- Saved resources (personal research library) ----------
+
+export interface SavedResource {
+  id: string
+  user_id: string
+  title: string
+  author: string | null
+  resource_type: string
+  year: number | null
+  url: string | null
+  notes: string | null
+  starred: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface SaveResourceInput {
+  title: string
+  author?: string
+  resource_type?: string
+  year?: number
+  url?: string
+  notes?: string
+  starred?: boolean
+}
+
+export async function listSavedResources(): Promise<SavedResource[]> {
+  const { data, error } = await supabase.from('saved_resources').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return data as SavedResource[]
+}
+
+export async function addSavedResource(input: SaveResourceInput): Promise<SavedResource> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) throw userErr
+  const user = userData.user
+  if (!user) throw new Error('Not signed in')
+
+  const { data, error } = await supabase.from('saved_resources').insert({ user_id: user.id, ...input }).select().single()
+  if (error) throw error
+  return data as SavedResource
+}
+
+export async function toggleSavedResourceStar(id: string, starred: boolean): Promise<void> {
+  const { error } = await supabase.from('saved_resources').update({ starred }).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteSavedResource(id: string): Promise<void> {
+  const { error } = await supabase.from('saved_resources').delete().eq('id', id)
+  if (error) throw error
+}
+
 // ---------- Citations (personal reference library) ----------
 
 export interface Citation {

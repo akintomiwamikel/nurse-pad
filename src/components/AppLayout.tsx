@@ -4,7 +4,7 @@ import { Search, Bell, Sun, Moon, ChevronDown, Sparkles, Plus } from 'lucide-rea
 import Sidebar from './Sidebar'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
-import { getMyProfile } from '../lib/api'
+import { getMyProfile, listNotifications } from '../lib/api'
 import type { Profile } from '../lib/types'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,10 +13,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
     getMyProfile().then(setProfile).catch(() => setProfile(null))
+    listNotifications().then(list => setUnreadCount(list.filter(n => !n.read).length)).catch(() => setUnreadCount(0))
   }, [user?.id])
 
   const displayName = profile?.full_name || (user?.user_metadata?.full_name as string) || user?.email?.split('@')[0] || 'Account'
@@ -85,7 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               style={{ color: 'var(--foreground)', textDecoration: 'none' }}
             >
               <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500" />
+              {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500" />}
             </Link>
 
             {/* Profile */}
