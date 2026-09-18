@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, AlertTriangle, Sparkles, PenLine, Upload, CheckCircle } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
-import { createAssignment } from '../lib/api'
+import { createAssignment, getMyProfile } from '../lib/api'
 import { uploadAssignmentFile } from '../lib/storage'
 
 const steps = [
@@ -40,6 +40,29 @@ const methodologies = ['Qualitative', 'Quantitative', 'Mixed Methods', 'Case Stu
 export default function NewDocument() {
   const [step, setStep] = useState(0)
   const [values, setValues] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    getMyProfile().then(profile => {
+      if (!profile) return
+      setValues(v => {
+        const next = { ...v }
+        if (profile.institution && !next.step2) next.step2 = profile.institution
+        const onboardingCitation = profile.onboarding?.citation
+        if (onboardingCitation && !next.style) {
+          const match = writingStyles.find(s => s.startsWith(onboardingCitation.split(' ')[0]))
+          if (match) next.style = match
+        }
+        const onboardingLevel = profile.onboarding?.level
+        if (onboardingLevel && !next.academicLevel) {
+          // Onboarding captures e.g. "300 Level" / "Postgraduate" / "Professional" — map loosely to the wizard's own options
+          if (/postgraduate|m\.sc|ph\.d/i.test(onboardingLevel)) next.academicLevel = 'Graduate / Masters'
+          else if (/professional/i.test(onboardingLevel)) next.academicLevel = 'Diploma / Certificate'
+          else next.academicLevel = 'Undergraduate'
+        }
+        return next
+      })
+    }).catch(() => { /* pre-fill is a nice-to-have; silently skip on failure */ })
+  }, [])
   const [aiMode, setAiMode] = useState<Record<string, boolean>>({})
   const [aiWarningShown, setAiWarningShown] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)

@@ -404,8 +404,10 @@ export interface UpdateProfileInput {
   full_name?: string
   nurse_role?: Profile['nurse_role']
   institution?: string
+  phone?: string
   bio?: string
   avatar_url?: string
+  onboarding?: Record<string, string>
   preferences?: Profile['preferences']
 }
 
@@ -449,6 +451,94 @@ export async function getWritingStats(): Promise<WritingStats> {
   const averageReviewScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
 
   return { totalWords, averageReviewScore, completedCount, totalAssignments }
+}
+
+// ---------- Citations (personal reference library) ----------
+
+export interface Citation {
+  id: string
+  user_id: string
+  authors: string | null
+  title: string
+  year: number | null
+  reference_type: string
+  citation_text: string
+  style_label: string | null
+  source_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SaveCitationInput {
+  authors?: string
+  title: string
+  year?: number
+  reference_type?: string
+  citation_text: string
+  style_label?: string
+  source_url?: string
+}
+
+export async function listCitations(): Promise<Citation[]> {
+  const { data, error } = await supabase.from('citations').select('*').order('authors', { ascending: true })
+  if (error) throw error
+  return data as Citation[]
+}
+
+export async function addCitation(input: SaveCitationInput): Promise<Citation> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr) throw userErr
+  const user = userData.user
+  if (!user) throw new Error('Not signed in')
+
+  const { data, error } = await supabase.from('citations').insert({ user_id: user.id, ...input }).select().single()
+  if (error) throw error
+  return data as Citation
+}
+
+export async function updateCitation(id: string, input: SaveCitationInput): Promise<Citation> {
+  const { data, error } = await supabase.from('citations').update(input).eq('id', id).select().single()
+  if (error) throw error
+  return data as Citation
+}
+
+export async function deleteCitation(id: string): Promise<void> {
+  const { error } = await supabase.from('citations').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ---------- AI operations (usage history) ----------
+
+export interface AiOperationRow {
+  id: string
+  operation_type: string
+  provider: string | null
+  model: string | null
+  input_tokens: number
+  output_tokens: number
+  credits_consumed: number
+  status: 'pending' | 'completed' | 'failed'
+  error_message: string | null
+  created_at: string
+  assignment_id: string | null
+  assignment_topic: string | null
+}
+
+export async function listAiOperations(): Promise<AiOperationRow[]> {
+  const { data, error } = await supabase
+    .from('ai_operations')
+    .select('*, nursing_assignments(topic)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    assignment_topic: row.nursing_assignments?.topic ?? null,
+  }))
+}
+
+export async function deleteAiOperation(id: string): Promise<void> {
+  const { error } = await supabase.from('ai_operations').delete().eq('id', id)
+  if (error) throw error
 }
 
 // ---------- AI credits ----------

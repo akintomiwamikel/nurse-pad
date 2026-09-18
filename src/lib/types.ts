@@ -13,8 +13,10 @@ export interface Profile {
   full_name: string | null
   nurse_role: 'student' | 'intern' | 'professional' | 'other' | null
   institution: string | null
+  phone: string | null
   bio: string | null
   avatar_url: string | null
+  onboarding: Record<string, string>
   preferences: {
     email_notifications?: boolean
     ai_suggestions?: boolean

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, ArrowRight, ArrowLeft, SkipForward } from 'lucide-react'
+import { CheckCircle, ArrowRight, ArrowLeft, SkipForward, AlertCircle } from 'lucide-react'
 import Logo from '../components/Logo'
+import { updateMyProfile } from '../lib/api'
 
 const steps = [
   {
@@ -82,17 +83,29 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [values, setValues] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const current = steps[step]
   const progress = ((step + 1) / steps.length) * 100
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < steps.length - 1) {
       setStep(s => s + 1)
-    } else {
-      setLoading(true)
-      setTimeout(() => navigate('/dashboard'), 1200)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const { institution, ...rest } = values
+      await updateMyProfile({
+        institution: institution || undefined,
+        onboarding: rest,
+      })
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save your answers')
+      setLoading(false)
     }
   }
 
@@ -182,6 +195,11 @@ export default function Onboarding() {
           )}
 
           {/* Navigation */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl mt-6 text-xs" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              <AlertCircle size={14} className="shrink-0" /> {error}
+            </div>
+          )}
           <div className="flex items-center justify-between mt-8">
             <button
               onClick={() => setStep(s => Math.max(0, s - 1))}

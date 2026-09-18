@@ -1,74 +1,77 @@
-import { useState } from 'react'
-import { Search, Plus, Upload, Link, PenLine, Copy, Trash2, Download, BookOpen, X, CheckCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Search, Plus, PenLine, Copy, Trash2, Download, BookOpen, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
+import { addCitation, deleteCitation, listCitations, updateCitation } from '../lib/api'
+import type { Citation, SaveCitationInput } from '../lib/api'
 
-type Style = 'APA 7th' | 'Harvard' | 'MLA 9th' | 'Chicago' | 'Vancouver'
-
-const styles: Style[] = ['APA 7th', 'Harvard', 'MLA 9th', 'Chicago', 'Vancouver']
-
-const savedCitations = [
-  {
-    id: 1,
-    authors: 'World Health Organization',
-    title: 'Global Status Report on Noncommunicable Diseases 2024',
-    year: 2024,
-    type: 'Report',
-    apa: 'World Health Organization. (2024). *Global status report on noncommunicable diseases 2024*. WHO Press.',
-    harvard: 'World Health Organization (2024) *Global status report on noncommunicable diseases 2024*. Geneva: WHO Press.',
-  },
-  {
-    id: 2,
-    authors: 'Potter, P. A., Perry, A. G., Stockert, P. A., & Hall, A.',
-    title: 'Fundamentals of Nursing',
-    year: 2023,
-    type: 'Book',
-    apa: 'Potter, P. A., Perry, A. G., Stockert, P. A., & Hall, A. (2023). *Fundamentals of nursing* (11th ed.). Elsevier.',
-    harvard: 'Potter, P.A., Perry, A.G., Stockert, P.A. and Hall, A. (2023) *Fundamentals of nursing*. 11th edn. St Louis: Elsevier.',
-  },
-  {
-    id: 3,
-    authors: 'Osei-Bonsu, K., Adeyemi, N., & Nwosu, E.',
-    title: 'Wound Care Protocols in Sub-Saharan Africa: A Systematic Review',
-    year: 2023,
-    type: 'Journal Article',
-    apa: 'Osei-Bonsu, K., Adeyemi, N., & Nwosu, E. (2023). Wound care protocols in Sub-Saharan Africa: A systematic review. *Journal of Advanced Nursing, 79*(4), 1234–1248. https://doi.org/10.1111/jan.15000',
-    harvard: 'Osei-Bonsu, K., Adeyemi, N. and Nwosu, E. (2023) "Wound care protocols in Sub-Saharan Africa: A systematic review," *Journal of Advanced Nursing*, 79(4), pp. 1234–1248.',
-  },
-  {
-    id: 4,
-    authors: 'NANDA International',
-    title: 'Nursing Diagnoses: Definitions & Classification 2021–2023',
-    year: 2021,
-    type: 'Book',
-    apa: 'NANDA International. (2021). *Nursing diagnoses: Definitions & classification 2021–2023* (12th ed.). Thieme.',
-    harvard: 'NANDA International (2021) *Nursing diagnoses: Definitions & classification 2021–2023*. 12th edn. New York: Thieme.',
-  },
-]
-
-type ModalType = 'doi' | 'pdf' | 'manual' | null
+const styleOptions = ['APA 7th', 'Harvard', 'MLA 9th', 'Chicago', 'Vancouver', 'Other']
+const referenceTypes = ['Journal Article', 'Book', 'Book Chapter', 'Website', 'Report', 'Thesis', 'Conference Paper']
 
 export default function CitationManager() {
-  const [activeStyle, setActiveStyle] = useState<Style>('APA 7th')
+  const [citations, setCitations] = useState<Citation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [styleFilter, setStyleFilter] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [modal, setModal] = useState<ModalType>(null)
-  const [doiValue, setDoiValue] = useState('')
-  const [copied, setCopied] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<Citation | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
 
-  const filtered = savedCitations.filter(c =>
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    c.authors.toLowerCase().includes(search.toLowerCase())
-  )
+  const refresh = () => {
+    setError(null)
+    return listCitations()
+      .then(setCitations)
+      .catch(err => setError(err instanceof Error ? err.message : 'Could not load citations'))
+      .finally(() => setLoading(false))
+  }
 
-  const handleCopy = (id: number, text: string) => {
+  useEffect(() => { refresh() }, [])
+
+  const filtered = citations.filter(c => {
+    const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) || (c.authors ?? '').toLowerCase().includes(search.toLowerCase())
+    const matchStyle = !styleFilter || c.style_label === styleFilter
+    return matchSearch && matchStyle
+  })
+
+  const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text).catch(() => {})
     setCopied(id)
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const getCitationText = (c: typeof savedCitations[0]) => {
-    if (activeStyle === 'APA 7th') return c.apa
-    if (activeStyle === 'Harvard') return c.harvard
-    return c.apa
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCitation(id)
+      refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete citation')
+    }
+  }
+
+  const handleCopyAll = () => {
+    const text = filtered.map(c => c.citation_text).join('\n\n')
+    navigator.clipboard.writeText(text).catch(() => {})
+  }
+
+  const handleExport = () => {
+    const text = filtered.map(c => c.citation_text).join('\n\n')
+    const blob = new Blob([text], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'bibliography.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="p-6 flex items-center justify-center min-h-[60vh]">
+          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--primary)' }} />
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
@@ -78,33 +81,42 @@ export default function CitationManager() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-extrabold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Citation Manager</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{savedCitations.length} citations saved</p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{citations.length} citation{citations.length === 1 ? '' : 's'} saved</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setModal('doi')} className="btn-secondary text-sm py-2">
-              <Link size={14} /> Import DOI
-            </button>
-            <button onClick={() => setModal('pdf')} className="btn-secondary text-sm py-2">
-              <Upload size={14} /> Import PDF
-            </button>
-            <button onClick={() => setModal('manual')} className="btn-primary text-sm py-2">
-              <Plus size={14} /> Add Citation
-            </button>
-          </div>
+          <button onClick={() => { setEditing(null); setModalOpen(true) }} className="btn-primary text-sm py-2">
+            <Plus size={14} /> Add Citation
+          </button>
         </div>
 
-        {/* Citation style selector */}
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-sm font-medium mr-2" style={{ color: 'var(--muted-foreground)' }}>Format:</span>
-          {styles.map(s => (
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-xl mb-4 text-xs" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+            <AlertCircle size={14} className="shrink-0" /> {error}
+          </div>
+        )}
+
+        {/* Style filter */}
+        <div className="flex items-center gap-2 mb-6 flex-wrap">
+          <span className="text-sm font-medium mr-1" style={{ color: 'var(--muted-foreground)' }}>Filter by style:</span>
+          <button
+            onClick={() => setStyleFilter(null)}
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border"
+            style={{
+              backgroundColor: !styleFilter ? 'var(--primary)' : 'transparent',
+              borderColor: !styleFilter ? 'var(--primary)' : 'var(--border)',
+              color: !styleFilter ? 'white' : 'var(--foreground)',
+            }}
+          >
+            All
+          </button>
+          {styleOptions.map(s => (
             <button
               key={s}
-              onClick={() => setActiveStyle(s)}
+              onClick={() => setStyleFilter(s)}
               className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border"
               style={{
-                backgroundColor: activeStyle === s ? 'var(--primary)' : 'transparent',
-                borderColor: activeStyle === s ? 'var(--primary)' : 'var(--border)',
-                color: activeStyle === s ? 'white' : 'var(--foreground)',
+                backgroundColor: styleFilter === s ? 'var(--primary)' : 'transparent',
+                borderColor: styleFilter === s ? 'var(--primary)' : 'var(--border)',
+                color: styleFilter === s ? 'white' : 'var(--foreground)',
               }}
             >
               {s}
@@ -119,136 +131,196 @@ export default function CitationManager() {
         </div>
 
         {/* Citation list */}
-        <div className="space-y-3 mb-8">
-          {filtered.map(c => (
-            <div key={c.id} className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: 'var(--primary-light)' }}>
-                  <BookOpen size={16} style={{ color: 'var(--primary)' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <div>
-                      <p className="text-sm font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{c.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.authors} · {c.year}</p>
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 rounded-2xl border border-dashed mb-8" style={{ borderColor: 'var(--border)' }}>
+            <BookOpen size={24} className="mx-auto mb-2" style={{ color: 'var(--muted-foreground)' }} />
+            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+              {citations.length === 0 ? 'No citations yet — add your first one.' : 'No citations match your search/filter.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 mb-8">
+            {filtered.map(c => (
+              <div key={c.id} className="rounded-2xl border p-5" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: 'var(--primary-light)' }}>
+                    <BookOpen size={16} style={{ color: 'var(--primary)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{c.title}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{c.authors}{c.year ? ` · ${c.year}` : ''}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="badge badge-accent text-[10px]">{c.reference_type}</span>
+                        {c.style_label && <span className="badge text-[10px]" style={{ backgroundColor: 'var(--muted)' }}>{c.style_label}</span>}
+                      </div>
                     </div>
-                    <span className="badge badge-accent text-[10px] shrink-0">{c.type}</span>
-                  </div>
-                  <div
-                    className="mt-3 p-3 rounded-xl text-xs font-mono leading-relaxed"
-                    style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}
-                  >
-                    {getCitationText(c)}
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <button
-                      onClick={() => handleCopy(c.id, getCitationText(c))}
-                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-[var(--muted)]"
-                      style={{ borderColor: 'var(--border)', color: copied === c.id ? 'var(--primary)' : 'var(--foreground)' }}
-                    >
-                      {copied === c.id ? <CheckCircle size={12} /> : <Copy size={12} />}
-                      {copied === c.id ? 'Copied!' : 'Copy'}
-                    </button>
-                    <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-[var(--muted)]"
-                      style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
-                      <PenLine size={12} /> Edit
-                    </button>
-                    <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50 text-red-500"
-                      style={{ borderColor: 'var(--border)' }}>
-                      <Trash2 size={12} /> Remove
-                    </button>
+                    <div className="mt-3 p-3 rounded-xl text-xs font-mono leading-relaxed" style={{ backgroundColor: 'var(--muted)', color: 'var(--foreground)' }}>
+                      {c.citation_text}
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={() => handleCopy(c.id, c.citation_text)}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-[var(--muted)]"
+                        style={{ borderColor: 'var(--border)', color: copied === c.id ? 'var(--primary)' : 'var(--foreground)' }}
+                      >
+                        {copied === c.id ? <CheckCircle size={12} /> : <Copy size={12} />}
+                        {copied === c.id ? 'Copied!' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={() => { setEditing(c); setModalOpen(true) }}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-[var(--muted)]"
+                        style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                      >
+                        <PenLine size={12} /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50 text-red-500"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        <Trash2 size={12} /> Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Generate Bibliography */}
-        <div
-          className="rounded-2xl border p-6"
-          style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Generated Bibliography</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{activeStyle} format · {savedCitations.length} references · Alphabetical order</p>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn-secondary text-sm py-2"><Copy size={13} /> Copy All</button>
-              <button className="btn-primary text-sm py-2"><Download size={13} /> Export</button>
-            </div>
+            ))}
           </div>
-          <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--muted)' }}>
-            {savedCitations
-              .slice()
-              .sort((a, b) => a.authors.localeCompare(b.authors))
-              .map((c, i) => (
+        )}
+
+        {/* Bibliography */}
+        {filtered.length > 0 && (
+          <div className="rounded-2xl border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-bold" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Bibliography</h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                  {styleFilter ?? 'All styles'} · {filtered.length} reference{filtered.length === 1 ? '' : 's'} · Alphabetical by author
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleCopyAll} className="btn-secondary text-sm py-2"><Copy size={13} /> Copy All</button>
+                <button onClick={handleExport} className="btn-primary text-sm py-2"><Download size={13} /> Export</button>
+              </div>
+            </div>
+            <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--muted)' }}>
+              {filtered.map((c, i) => (
                 <p key={i} className="text-xs font-mono leading-relaxed pl-6 -indent-6" style={{ color: 'var(--foreground)' }}>
-                  {getCitationText(c)}
+                  {c.citation_text}
                 </p>
               ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Modals */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModal(null)} />
-          <div className="relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
-              <h2 className="font-bold text-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                {modal === 'doi' ? 'Import by DOI' : modal === 'pdf' ? 'Import from PDF' : 'Add Citation Manually'}
-              </h2>
-              <button onClick={() => setModal(null)} className="btn-ghost p-1.5"><X size={16} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              {modal === 'doi' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">DOI or URL</label>
-                    <input className="input" placeholder="e.g. 10.1111/jan.15000" value={doiValue} onChange={e => setDoiValue(e.target.value)} autoFocus />
-                    <p className="text-xs mt-1.5" style={{ color: 'var(--muted-foreground)' }}>Paste a DOI, PubMed ID, or full article URL</p>
-                  </div>
-                  <button onClick={() => setModal(null)} className="btn-primary w-full justify-center py-2.5">
-                    <Search size={14} /> Fetch Citation
-                  </button>
-                </>
-              )}
-              {modal === 'pdf' && (
-                <>
-                  <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-[var(--primary)] transition-colors" style={{ borderColor: 'var(--border)' }}>
-                    <Upload size={28} className="mx-auto mb-2" style={{ color: 'var(--muted-foreground)' }} />
-                    <p className="text-sm font-medium mb-1">Drop PDF here or click to browse</p>
-                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>AI will extract citation details automatically</p>
-                  </div>
-                  <button onClick={() => setModal(null)} className="btn-primary w-full justify-center py-2.5">Extract Citation</button>
-                </>
-              )}
-              {modal === 'manual' && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[['Authors', 'Last, F. I., & Last, F. I.'], ['Year', '2024'], ['Title', 'Article title here'], ['Journal / Publisher', 'Journal Name']].map(([label, ph]) => (
-                      <div key={label} className={label === 'Title' ? 'col-span-2' : ''}>
-                        <label className="block text-sm font-medium mb-1.5">{label}</label>
-                        <input className="input" placeholder={ph} />
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Reference type</label>
-                    <select className="input">
-                      {['Journal Article', 'Book', 'Book Chapter', 'Website', 'Report', 'Thesis', 'Conference Paper'].map(t => <option key={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <button onClick={() => setModal(null)} className="btn-primary w-full justify-center py-2.5">Save Citation</button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+      {modalOpen && (
+        <CitationModal
+          initial={editing}
+          onClose={() => setModalOpen(false)}
+          onSaved={() => { setModalOpen(false); refresh() }}
+        />
       )}
     </AppLayout>
+  )
+}
+
+function CitationModal({ initial, onClose, onSaved }: { initial: Citation | null; onClose: () => void; onSaved: () => void }) {
+  const [authors, setAuthors] = useState(initial?.authors ?? '')
+  const [year, setYear] = useState(initial?.year ? String(initial.year) : '')
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [referenceType, setReferenceType] = useState(initial?.reference_type ?? 'Journal Article')
+  const [citationText, setCitationText] = useState(initial?.citation_text ?? '')
+  const [styleLabel, setStyleLabel] = useState(initial?.style_label ?? 'APA 7th')
+  const [sourceUrl, setSourceUrl] = useState(initial?.source_url ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSave = async () => {
+    if (!title.trim() || !citationText.trim()) {
+      setError('Title and the full citation text are both required')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    const input: SaveCitationInput = {
+      authors: authors || undefined,
+      year: year ? Number(year) : undefined,
+      title,
+      reference_type: referenceType,
+      citation_text: citationText,
+      style_label: styleLabel,
+      source_url: sourceUrl || undefined,
+    }
+    try {
+      if (initial) await updateCitation(initial.id, input)
+      else await addCitation(input)
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save citation')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="font-bold text-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{initial ? 'Edit Citation' : 'Add Citation'}</h2>
+          <button onClick={onClose} className="btn-ghost p-1.5"><X size={16} /></button>
+        </div>
+        <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
+          {error && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+              <AlertCircle size={13} className="shrink-0" /> {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1.5">Title *</label>
+              <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Article/book title" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Authors</label>
+              <input className="input" value={authors} onChange={e => setAuthors(e.target.value)} placeholder="Last, F. I., & ..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Year</label>
+              <input className="input" type="number" value={year} onChange={e => setYear(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Reference type</label>
+              <select className="input" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
+                {referenceTypes.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Style</label>
+              <select className="input" value={styleLabel} onChange={e => setStyleLabel(e.target.value)}>
+                {styleOptions.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Full citation text *</label>
+            <textarea className="input resize-none text-sm" rows={3} value={citationText} onChange={e => setCitationText(e.target.value)} placeholder="Paste or type the full formatted citation" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Source URL (optional)</label>
+            <input className="input" value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://doi.org/..." />
+          </div>
+          <button onClick={handleSave} className="btn-primary w-full justify-center py-2.5" disabled={saving}>
+            {saving ? 'Saving...' : initial ? 'Save Changes' : 'Save Citation'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

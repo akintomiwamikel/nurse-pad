@@ -1,22 +1,128 @@
-import { useState } from 'react'
-import { User, Shield, CreditCard, Bell, Globe, Palette, Key, Trash2, ChevronRight, Sun, Moon, Monitor } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { User, Shield, CreditCard, Bell, Palette, Trash2, Sun, Moon, AlertCircle, Loader2 } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import { getMyProfile, updateMyProfile } from '../lib/api'
+import type { Profile } from '../lib/types'
 
 const tabs = [
   { id: 'general', label: 'General', icon: User },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'language', label: 'Language', icon: Globe },
-  { id: 'api', label: 'API Keys', icon: Key },
   { id: 'billing', label: 'Billing', icon: CreditCard },
+]
+
+const prefLabels: { key: keyof NonNullable<Profile['preferences']>; label: string; desc: string }[] = [
+  { key: 'email_notifications', label: 'Email notifications', desc: 'Writing reminders, deadline alerts' },
+  { key: 'ai_suggestions', label: 'AI suggestions', desc: 'Show AI recommendations while writing' },
+  { key: 'autosave', label: 'Autosave', desc: 'Save drafts automatically as you type' },
+  { key: 'grammar_check', label: 'Grammar check', desc: 'Highlight grammar issues as you type' },
 ]
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('general')
   const { theme, toggleTheme } = useTheme()
-  const [twoFa, setTwoFa] = useState(false)
+  const { updatePassword } = useAuth()
+  const navigate = useNavigate()
+
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // General tab form state
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [bio, setBio] = useState('')
+  const [institution, setInstitution] = useState('')
+  const [programme, setProgramme] = useState('')
+  const [level, setLevel] = useState('')
+  const [country, setCountry] = useState('')
+  const [savingGeneral, setSavingGeneral] = useState(false)
+  const [generalError, setGeneralError] = useState<string | null>(null)
+  const [generalSaved, setGeneralSaved] = useState(false)
+
+  // Security tab
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
+
+  const refresh = () => getMyProfile().then(p => {
+    setProfile(p)
+    if (p) {
+      setFullName(p.full_name ?? '')
+      setPhone(p.phone ?? '')
+      setBio(p.bio ?? '')
+      setInstitution(p.institution ?? '')
+      setProgramme(p.onboarding?.programme ?? '')
+      setLevel(p.onboarding?.level ?? '')
+      setCountry(p.onboarding?.country ?? '')
+    }
+  }).finally(() => setLoading(false))
+
+  useEffect(() => { refresh() }, [])
+
+  const handleSaveGeneral = async () => {
+    setSavingGeneral(true)
+    setGeneralError(null)
+    setGeneralSaved(false)
+    try {
+      const updated = await updateMyProfile({
+        full_name: fullName,
+        phone,
+        bio,
+        institution,
+        onboarding: { ...(profile?.onboarding ?? {}), programme, level, country },
+      })
+      setProfile(updated)
+      setGeneralSaved(true)
+    } catch (err) {
+      setGeneralError(err instanceof Error ? err.message : 'Could not save changes')
+    } finally {
+      setSavingGeneral(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setPasswordError(null)
+    setPasswordSaved(false)
+    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return }
+    setPasswordSaving(true)
+    try {
+      const { error } = await updatePassword(newPassword)
+      if (error) { setPasswordError(error); return }
+      setPasswordSaved(true)
+      setNewPassword('')
+      setConfirmPassword('')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  const togglePreference = async (key: keyof NonNullable<Profile['preferences']>) => {
+    if (!profile) return
+    const nextPrefs = { ...profile.preferences, [key]: !profile.preferences?.[key] }
+    setProfile({ ...profile, preferences: nextPrefs })
+    try {
+      await updateMyProfile({ preferences: nextPrefs })
+    } catch {
+      refresh()
+    }
+  }
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="p-6 flex items-center justify-center min-h-[60vh]">
+          <Loader2 size={24} className="animate-spin" style={{ color: 'var(--primary)' }} />
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>
@@ -30,8 +136,8 @@ export default function Settings() {
               {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left`}
+                  onClick={() => tab.id === 'billing' ? navigate('/billing') : setActiveTab(tab.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
                   style={{
                     backgroundColor: activeTab === tab.id ? 'var(--primary-light)' : 'transparent',
                     color: activeTab === tab.id ? 'var(--primary)' : 'var(--foreground)',
@@ -42,7 +148,10 @@ export default function Settings() {
                 </button>
               ))}
               <div className="pt-3 mt-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-all">
+                <button
+                  onClick={() => alert('Account deletion isn\'t available yet — this needs a server-side process we haven\'t built. Contact support for now.')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-all"
+                >
                   <Trash2 size={15} /> Delete Account
                 </button>
               </div>
@@ -54,31 +163,54 @@ export default function Settings() {
             {activeTab === 'general' && (
               <>
                 <Section title="Profile Information" desc="Update your basic profile details">
+                  {generalError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl mb-4 text-xs" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                      <AlertCircle size={14} className="shrink-0" /> {generalError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
-                    {[['First Name', 'Amara'], ['Last Name', 'Okonkwo'], ['Email', 'amara@university.edu'], ['Phone', '+234 801 234 5678']].map(([label, val]) => (
-                      <div key={label}>
-                        <label className="block text-sm font-medium mb-1.5">{label}</label>
-                        <input className="input" defaultValue={val} />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Full Name</label>
+                      <input className="input" value={fullName} onChange={e => setFullName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Email</label>
+                      <input className="input" value={profile?.email ?? ''} disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Phone</label>
+                      <input className="input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
+                    </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-medium mb-1.5">Bio</label>
-                      <textarea className="input resize-none" rows={3} defaultValue="Final year nursing student with a passion for evidence-based practice." />
+                      <textarea className="input resize-none" rows={3} value={bio} onChange={e => setBio(e.target.value)} />
                     </div>
                   </div>
-                  <button className="btn-primary mt-2">Save Changes</button>
                 </Section>
 
                 <Section title="Academic Information" desc="Used for document formatting and templates">
                   <div className="grid grid-cols-2 gap-4">
-                    {[['Institution', 'University of Lagos'], ['Programme', 'B.Sc Nursing'], ['Level', '400 Level'], ['Country', 'Nigeria']].map(([label, val]) => (
-                      <div key={label}>
-                        <label className="block text-sm font-medium mb-1.5">{label}</label>
-                        <input className="input" defaultValue={val} />
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Institution</label>
+                      <input className="input" value={institution} onChange={e => setInstitution(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Programme</label>
+                      <input className="input" value={programme} onChange={e => setProgramme(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Level</label>
+                      <input className="input" value={level} onChange={e => setLevel(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Country</label>
+                      <input className="input" value={country} onChange={e => setCountry(e.target.value)} />
+                    </div>
                   </div>
-                  <button className="btn-primary mt-2">Save Changes</button>
+                  <button onClick={handleSaveGeneral} className="btn-primary mt-4" disabled={savingGeneral}>
+                    {savingGeneral ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  {generalSaved && <span className="ml-3 text-xs" style={{ color: 'var(--success)' }}>Saved</span>}
                 </Section>
               </>
             )}
@@ -86,20 +218,24 @@ export default function Settings() {
             {activeTab === 'security' && (
               <>
                 <Section title="Change Password" desc="Use a strong, unique password">
+                  {passwordError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl mb-4 text-xs" style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                      <AlertCircle size={14} className="shrink-0" /> {passwordError}
+                    </div>
+                  )}
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1.5">Current password</label>
-                      <input type="password" className="input" placeholder="••••••••" />
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium mb-1.5">New password</label>
-                      <input type="password" className="input" placeholder="••••••••" />
+                      <input type="password" className="input" placeholder="Min. 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1.5">Confirm new password</label>
-                      <input type="password" className="input" placeholder="••••••••" />
+                      <input type="password" className="input" placeholder="••••••••" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                     </div>
-                    <button className="btn-primary">Update Password</button>
+                    <button onClick={handleChangePassword} className="btn-primary" disabled={passwordSaving}>
+                      {passwordSaving ? 'Updating...' : 'Update Password'}
+                    </button>
+                    {passwordSaved && <span className="ml-3 text-xs" style={{ color: 'var(--success)' }}>Password updated</span>}
                   </div>
                 </Section>
 
@@ -107,139 +243,66 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">Authenticator App</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>{twoFa ? 'Enabled' : 'Disabled'} — use Google Authenticator or Authy</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>Not available yet — coming in a future update</p>
                     </div>
-                    <button onClick={() => setTwoFa(f => !f)}
-                      className="w-11 h-6 rounded-full transition-colors relative"
-                      style={{ backgroundColor: twoFa ? 'var(--primary)' : 'var(--border)' }}>
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${twoFa ? 'translate-x-5' : 'translate-x-1'}`} />
-                    </button>
+                    <span className="badge text-[10px]" style={{ backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}>Coming soon</span>
                   </div>
-                </Section>
-
-                <Section title="Active Sessions" desc="Manage devices that are signed in">
-                  {[
-                    { device: 'MacBook Pro 14"', location: 'Lagos, Nigeria', current: true, time: 'Now' },
-                    { device: 'iPhone 15 Pro', location: 'Lagos, Nigeria', current: false, time: '2 days ago' },
-                  ].map((s, i) => (
-                    <div key={i} className="flex items-center justify-between py-3 border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-                      <div>
-                        <p className="text-sm font-medium">{s.device}</p>
-                        <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{s.location} · {s.time}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {s.current && <span className="badge badge-success text-[10px]">Current</span>}
-                        {!s.current && <button className="text-xs text-red-500 hover:underline">Sign out</button>}
-                      </div>
-                    </div>
-                  ))}
                 </Section>
               </>
             )}
 
             {activeTab === 'notifications' && (
               <Section title="Notification Preferences" desc="Choose what you want to be notified about">
-                <div className="space-y-5">
-                  {[
-                    { category: 'Writing & Documents', items: [
-                      { label: 'Writing reminders', desc: 'Daily prompts to meet your writing goal', on: true },
-                      { label: 'Deadline alerts', desc: 'Get notified 24h before a deadline', on: true },
-                      { label: 'Autosave confirmations', desc: 'Show autosave status in editor', on: false },
-                    ]},
-                    { category: 'AI & Features', items: [
-                      { label: 'AI generation complete', desc: 'Notify when AI finishes generating', on: true },
-                      { label: 'Credit usage alerts', desc: 'Alert when credits are running low', on: true },
-                    ]},
-                    { category: 'Account & Billing', items: [
-                      { label: 'Subscription reminders', desc: 'Alert before subscription renews', on: true },
-                      { label: 'Payment receipts', desc: 'Email on successful payments', on: true },
-                    ]},
-                  ].map(group => (
-                    <div key={group.category}>
-                      <p className="text-xs font-bold mb-3" style={{ color: 'var(--muted-foreground)' }}>{group.category.toUpperCase()}</p>
-                      <div className="space-y-3">
-                        {group.items.map(item => (
-                          <div key={item.label} className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium">{item.label}</p>
-                              <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{item.desc}</p>
-                            </div>
-                            <button className="w-11 h-6 rounded-full transition-colors relative" style={{ backgroundColor: item.on ? 'var(--primary)' : 'var(--border)' }}>
-                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${item.on ? 'translate-x-5' : 'translate-x-1'}`} />
-                            </button>
-                          </div>
-                        ))}
+                <div className="space-y-4">
+                  {prefLabels.map(pref => {
+                    const on = !!profile?.preferences?.[pref.key]
+                    return (
+                      <div key={pref.key} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">{pref.label}</p>
+                          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{pref.desc}</p>
+                        </div>
+                        <button
+                          onClick={() => togglePreference(pref.key)}
+                          className="w-11 h-6 rounded-full transition-colors relative"
+                          style={{ backgroundColor: on ? 'var(--primary)' : 'var(--border)' }}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </button>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
+                <p className="text-xs mt-5 pt-4 border-t" style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}>
+                  These same preferences are shared with your Profile page.
+                </p>
               </Section>
             )}
 
             {activeTab === 'appearance' && (
               <Section title="Appearance" desc="Customize how NURSE PAD looks">
-                <div className="space-y-5">
-                  <div>
-                    <p className="text-sm font-medium mb-3">Theme</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: 'Light', icon: Sun, value: 'light' },
-                        { label: 'Dark', icon: Moon, value: 'dark' },
-                        { label: 'System', icon: Monitor, value: 'system' },
-                      ].map(t => (
-                        <button
-                          key={t.label}
-                          onClick={() => theme !== t.value && toggleTheme()}
-                          className="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all"
-                          style={{
-                            borderColor: theme === t.value ? 'var(--primary)' : 'var(--border)',
-                            backgroundColor: theme === t.value ? 'var(--primary-light)' : 'var(--card)',
-                            color: theme === t.value ? 'var(--primary)' : 'var(--foreground)',
-                          }}
-                        >
-                          <t.icon size={20} />
-                          <span className="text-sm font-medium">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
+                <div>
+                  <p className="text-sm font-medium mb-3">Theme</p>
+                  <div className="grid grid-cols-2 gap-3 max-w-xs">
+                    {[
+                      { label: 'Light', icon: Sun, value: 'light' },
+                      { label: 'Dark', icon: Moon, value: 'dark' },
+                    ].map(t => (
+                      <button
+                        key={t.label}
+                        onClick={() => theme !== t.value && toggleTheme()}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all"
+                        style={{
+                          borderColor: theme === t.value ? 'var(--primary)' : 'var(--border)',
+                          backgroundColor: theme === t.value ? 'var(--primary-light)' : 'var(--card)',
+                          color: theme === t.value ? 'var(--primary)' : 'var(--foreground)',
+                        }}
+                      >
+                        <t.icon size={20} />
+                        <span className="text-sm font-medium">{t.label}</span>
+                      </button>
+                    ))}
                   </div>
-
-                  <div>
-                    <p className="text-sm font-medium mb-3">Font Size</p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Small</span>
-                      <input type="range" min="12" max="20" defaultValue="16" className="flex-1" />
-                      <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Large</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium mb-3">Editor Line Spacing</p>
-                    <div className="flex gap-2">
-                      {['1.5', '1.8', '2.0'].map(s => (
-                        <button key={s} className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${s === '1.8' ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]' : ''}`} style={{ borderColor: s === '1.8' ? 'var(--primary)' : 'var(--border)' }}>
-                          {s}×
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </Section>
-            )}
-
-            {activeTab === 'api' && (
-              <Section title="API Keys" desc="Use NURSE PAD programmatically with your applications">
-                <div className="flex items-center justify-between p-4 rounded-xl border mb-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--muted)' }}>
-                  <div>
-                    <p className="text-sm font-medium">Production API Key</p>
-                    <p className="font-mono text-xs mt-1" style={{ color: 'var(--muted-foreground)' }}>np_live_••••••••••••••••••••••••••</p>
-                  </div>
-                  <button className="btn-ghost text-xs">Reveal</button>
-                </div>
-                <button className="btn-secondary text-sm">+ Generate New Key</button>
-                <div className="mt-4 p-4 rounded-xl text-sm" style={{ backgroundColor: 'var(--muted)' }}>
-                  <p className="font-semibold mb-1">Rate limits</p>
-                  <p style={{ color: 'var(--muted-foreground)' }}>Student Pro: 100 requests/hour · 5 concurrent requests</p>
                 </div>
               </Section>
             )}
