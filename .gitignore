@@ -11,3 +11,4 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
+ # Android / Capacitor android/.gradle/ android/app/build/ android/build/ android/local.properties android/.idea/ android/app/release/ android/app/debug/ android/captures/ *.keystore *.jks
